@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>근무시간 관리</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: #0a0a0c; }
+  body { background: #0d0d0f; color: #f0ede8; font-family: 'Noto Sans KR', sans-serif; padding-bottom: 60px; min-height: 100vh; max-width: 680px; min-width: 320px; margin: 0 auto; box-shadow: 0 0 60px rgba(0,0,0,0.8); }
+  button { font-family: inherit; }
+  input { font-family: inherit; }
+
+  /* 헤더 */
+  #header { background: linear-gradient(135deg,#1a1a1f,#111116); border-bottom: 1px solid #2a2a32; padding: 20px 20px 0; position: sticky; top: 0; z-index: 50; }
+  #header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .label-small { font-size: 11px; color: #6b6b7a; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 2px; }
+  .title-main { font-size: 22px; font-weight: 700; }
+  #btn-settings { background: #1e1e26; border: 1px solid #2a2a32; border-radius: 10px; padding: 8px 14px; color: #9b9baa; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  #btn-settings.active { background: #e8ff5a; color: #0d0d0f; }
+
+  /* 헤더 버튼 그룹 */
+  #header-btns { display: flex; gap: 8px; }
+
+  /* 도움말 버튼 */
+  #btn-help { background: #1e1e26; border: 1px solid #2a2a32; border-radius: 10px; padding: 8px 14px; color: #9b9baa; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  #btn-help.active { background: #4a4aff; color: #fff; border-color: #4a4aff; }
+
+  /* 도움말 팝업 */
+  #help-panel { display: none; background: #15151c; border: 1px solid #2a2a32; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+  #help-panel.open { display: block; }
+  .help-title { font-size: 13px; font-weight: 700; color: #e8ff5a; margin-bottom: 12px; }
+  .help-item { display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-start; }
+  .help-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .help-text { font-size: 12px; color: #c0c0cc; line-height: 1.6; }
+  .help-text strong { color: #f0ede8; }
+  .help-divider { border: none; border-top: 1px solid #2a2a32; margin: 10px 0; }
+  .help-credit { font-size: 11px; color: #5a5a68; text-align: center; margin-top: 8px; }
+  .help-credit strong { color: #9b9baa; }
+
+  /* 설정 패널 */
+  #settings-panel { background: #15151c; border: 1px solid #2a2a32; border-radius: 12px; padding: 16px; margin-bottom: 12px; display: none; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  #settings-panel.open { display: grid; }
+  .setting-label { font-size: 11px; color: #6b6b7a; margin-bottom: 6px; }
+  .input-style { background: #111116; border: 1px solid #2a2a32; border-radius: 10px; padding: 10px 14px; color: #f0ede8; font-size: 15px; width: 100%; outline: none; }
+
+  /* 월 네비 */
+  #month-nav { display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; }
+  .nav-btn { background: #1e1e26; border: 1px solid #2a2a32; border-radius: 10px; width: 40px; height: 40px; color: #9b9baa; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; }
+  #month-title { font-size: 18px; font-weight: 700; text-align: center; }
+  #month-subtitle { font-size: 11px; color: #6b6b7a; margin-top: 2px; text-align: center; }
+
+  /* 콘텐츠 */
+  #content { padding: 16px 16px 0; }
+
+  /* 임시공휴일 — 설정 스타일로 축소 */
+  #temp-section { background: #15151c; border: 1px solid #2a2a32; border-radius: 12px; margin-bottom: 12px; overflow: hidden; }
+  #btn-temp-mode { width: 100%; background: none; border: none; padding: 10px 14px; color: #9b9baa; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s; }
+  #btn-temp-mode.active { color: #ff8a8a; background: linear-gradient(135deg,#2a1010,#1a0808); }
+  #btn-temp-mode .hint { font-size: 10px; font-weight: 400; color: #5a5a68; }
+  #btn-temp-mode.active .hint { color: #ff6a6a; }
+  #temp-list { display: none; flex-wrap: wrap; gap: 5px; padding: 0 14px 10px; border-top: 1px solid #2a2a32; }
+  #temp-list.show { display: flex; }
+  .temp-tag { background: #2a1414; border: 1px solid #5a2020; border-radius: 6px; padding: 2px 7px; font-size: 11px; color: #ff8a8a; display: flex; align-items: center; gap: 4px; }
+  .temp-tag button { background: none; border: none; color: #ff6a6a; cursor: pointer; font-size: 13px; padding: 0; line-height: 1; }
+
+  /* 진행률 카드 */
+  #progress-card { background: #15151c; border: 1px solid #2a2a32; border-radius: 16px; padding: 18px; margin-bottom: 12px; }
+  .progress-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+  .progress-val { font-size: 26px; font-weight: 800; color: #e8ff5a; }
+  .progress-val-req { font-size: 26px; font-weight: 800; color: #f0ede8; text-align: right; }
+  .progress-bar-bg { background: #222230; border-radius: 999px; height: 7px; margin-bottom: 6px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; width: 0%; border-radius: 999px; transition: width 0.5s ease; }
+  .progress-info { display: flex; justify-content: space-between; font-size: 11px; color: #6b6b7a; }
+  .pbar-label { font-size: 10px; color: #6b6b7a; margin-bottom: 3px; }
+
+  /* 한도시간 카드 */
+  #limit-card { background: #15151c; border: 1px solid #2a2a32; border-radius: 16px; padding: 16px; margin-bottom: 12px; }
+  #limit-card.warning { border-color: #cc6620; background: #1a1008; }
+  #limit-card.blocked { border-color: #cc2020; background: #1a0808; }
+  .limit-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .limit-title { font-size: 11px; color: #6b6b7a; font-weight: 600; letter-spacing: 1px; }
+  .limit-badge { font-size: 10px; padding: 2px 8px; border-radius: 99px; font-weight: 700; display: none; }
+  .limit-badge.warning { display: inline-block; background: #cc6620; color: #fff; }
+  .limit-badge.blocked { display: inline-block; background: #cc2020; color: #fff; }
+  .limit-row { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px; }
+  .limit-actual { font-size: 22px; font-weight: 800; color: #f0a050; }
+  .limit-max { font-size: 13px; color: #6b6b7a; }
+  #limit-bar-bg { background: #222230; border-radius: 999px; height: 7px; margin-bottom: 6px; overflow: hidden; }
+  #limit-bar { height: 100%; width: 0%; border-radius: 999px; transition: width 0.5s ease; background: linear-gradient(90deg,#4a4aff,#f0a050); }
+  .limit-info { display: flex; justify-content: space-between; font-size: 11px; color: #6b6b7a; }
+  #limit-warning-msg { font-size: 11px; margin-top: 8px; padding: 7px 10px; border-radius: 8px; display: none; }
+  #limit-warning-msg.warning { display: block; background: #2a1a08; color: #f0a050; border: 1px solid #8a5020; }
+  #limit-warning-msg.blocked { display: block; background: #2a0808; color: #ff7a7a; border: 1px solid #8a2020; }
+
+  /* 차단휴가 캘린더 하이라이트 */
+  .cal-cell.blocked-leave { background: #1a0808 !important; }
+  .cell-blocked-label { font-size: 8px; color: #ff6a6a; line-height: 1; font-weight: 700; }
+
+  /* 상태 카드 */
+  #status-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .status-card { background: #15151c; border: 1px solid #2a2a32; border-radius: 14px; padding: 14px; transition: all 0.3s; }
+  .status-card.overtime { background: #1a2410; border-color: #4a7a20; }
+  .status-card.undertime { background: #1f1010; border-color: #7a2020; }
+  .status-card-label { font-size: 10px; color: #6b6b7a; margin-bottom: 6px; }
+  .status-card-val { font-size: 20px; font-weight: 800; color: #3a3a48; }
+  .status-card.overtime .status-card-val { color: #a8ff5a; }
+  .status-card.undertime .status-card-val { color: #ff7a7a; }
+  .status-card-sub { font-size: 10px; margin-top: 4px; display: none; }
+  .status-card.overtime .status-card-sub { display: block; color: #7ab840; }
+  .status-card.undertime .status-card-sub { display: block; color: #cc5555; }
+
+  /* 초과수당 카드 */
+  #overtime-card { background: linear-gradient(135deg,#1a2a08,#111810); border: 1px solid #3a5a18; border-radius: 14px; padding: 16px; margin-bottom: 12px; display: none; }
+  #overtime-card.show { display: block; }
+  .ot-title { font-size: 11px; color: #7ab840; margin-bottom: 10px; font-weight: 600; letter-spacing: 1px; }
+  .ot-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; }
+  .ot-row-label { font-size: 12px; color: #6b8a4a; }
+  .ot-row-val { font-size: 12px; color: #c8d8b0; }
+  .ot-row-val.highlight { color: #e8ff5a; }
+  .ot-divider { border-top: 1px solid #3a5a18; padding-top: 8px; margin-top: 4px; display: flex; justify-content: space-between; align-items: center; }
+  .ot-total-label { font-size: 12px; color: #6b8a4a; }
+  .ot-total-val { font-size: 16px; font-weight: 800; color: #a8ff5a; }
+
+  /* 캘린더 */
+  #cal-wrap { padding: 0 16px; }
+  #calendar { background: #15151c; border: 1px solid #2a2a32; border-radius: 16px; overflow: hidden; margin-bottom: 12px; transition: border-color 0.2s; }
+  #calendar.temp-mode { border-color: #5a2020; }
+  #cal-header { display: grid; grid-template-columns: repeat(7,1fr); background: #111116; }
+  .cal-dow { text-align: center; padding: 10px 0; font-size: 11px; font-weight: 600; color: #6b6b7a; }
+  .cal-dow:first-child { color: #ff7a7a; }
+  .cal-dow:last-child { color: #7a9fff; }
+  #cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 1px; background: #2a2a32; }
+  .cal-cell { background: #15151c; min-height: 60px; padding: 6px 5px; position: relative; cursor: pointer; transition: background 0.15s; border: 2px solid transparent; }
+  .cal-cell.non-work { background: #111116; cursor: default; }
+  .cal-cell.temp-holiday { background: #1a0e0e; border-color: #7a2020; cursor: pointer; }
+  .cal-cell.annual-leave { background: #1a1528; }
+  .cal-cell.blocked-leave { background: #1f0808; }
+  .cal-cell.active-day { background: #1e1e2e; border-color: #e8ff5a !important; }
+  .cal-cell.temp-highlight { background: #161620; }
+  .cell-day { font-size: 13px; font-weight: 500; color: #f0ede8; margin-bottom: 2px; display: flex; align-items: center; gap: 2px; }
+  .cal-cell.non-work .cell-day { color: #3a3a48; }
+  .cal-cell.temp-holiday .cell-day { color: #7a3a3a; }
+  .cal-cell.annual-leave .cell-day { color: #8a6ab8; }
+  .cal-cell.blocked-leave .cell-day { color: #aa4a4a; }
+  .cell-day-dot { width: 4px; height: 4px; border-radius: 50%; background: #e8ff5a; display: inline-block; }
+  .cell-holiday-label { font-size: 7px; color: #ff7a7a; line-height: 1.2; }
+  .cell-temp-label { font-size: 7px; color: #ff6a6a; line-height: 1.2; font-weight: 700; }
+  .cell-leave-label { font-size: 8px; color: #8a6ab8; font-weight: 600; }
+  .cell-blocked-label { font-size: 7px; color: #ff6a6a; font-weight: 700; line-height: 1.2; }
+  .cell-hours { font-size: 11px; font-weight: 700; color: #e8ff5a; }
+  .cell-hours.over { color: #a8ff5a; }
+  .cell-hours.under { color: #ff9a7a; }
+  .cell-leave-btn { position: absolute; bottom: 3px; right: 3px; font-size: 7px; background: #222230; color: #6b6b7a; border: none; border-radius: 4px; padding: 2px 4px; cursor: pointer; font-family: inherit; }
+  .cell-leave-btn.on { background: #8a6ab8; color: #fff; }
+
+  /* 범례 */
+  #legend { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; padding: 0 4px; }
+  .legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #6b6b7a; }
+  .legend-dot { width: 7px; height: 7px; border-radius: 2px; flex-shrink: 0; }
+
+  /* 바텀시트 */
+  #overlay { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.7); display: none; align-items: flex-end; }
+  #overlay.show { display: flex; }
+  #bottomsheet { width: 100%; background: #1a1a22; border-top: 1px solid #3a3a48; border-radius: 20px 20px 0 0; padding: 24px 20px 40px; }
+  .bs-handle { width: 40px; height: 4px; background: #3a3a48; border-radius: 2px; margin: 0 auto 20px; }
+  #bs-date { font-size: 14px; color: #9b9baa; margin-bottom: 14px; text-align: center; }
+  #bs-input-row { display: flex; gap: 8px; align-items: center; justify-content: center; }
+  .bs-time-input { background: #111116; border: 1px solid #2a2a32; border-radius: 10px; padding: 0; color: #f0ede8; font-size: 26px; font-weight: 700; text-align: center; height: 62px; outline: none; width: 90px; -moz-appearance: textfield; }
+  .bs-time-input::-webkit-outer-spin-button,
+  .bs-time-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .bs-spin-wrap { display: flex; flex-direction: column; gap: 0; }
+  .bs-spin-btn { background: #222230; border: 1px solid #2a2a32; width: 32px; height: 28px; color: #9b9baa; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; flex-shrink: 0; }
+  .bs-spin-btn:first-child { border-radius: 8px 8px 0 0; border-bottom: none; }
+  .bs-spin-btn:last-child  { border-radius: 0 0 8px 8px; }
+  .bs-spin-btn:active { background: #e8ff5a; color: #0d0d0f; }
+  .bs-field-wrap { display: flex; align-items: center; gap: 4px; }
+  .bs-time-unit { color: #6b6b7a; font-size: 15px; }
+  #bs-quick { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-top: 14px; }
+  .bs-quick-btn { background: #222230; border: none; border-radius: 10px; padding: 12px 0; color: #c0c0cc; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .bs-quick-btn.selected { background: #e8ff5a; color: #0d0d0f; }
+  #bs-save { width: 100%; margin-top: 14px; background: #e8ff5a; border: none; border-radius: 14px; padding: 16px 0; font-size: 16px; font-weight: 800; color: #0d0d0f; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<!-- 헤더 -->
+<div id="header">
+  <div id="header-top">
+    <div>
+      <div class="label-small">Work Tracker</div>
+      <div class="title-main">근무시간 관리</div>
+    </div>
+    <div id="header-btns">
+      <button id="btn-help" onclick="toggleHelp()">? 도움말</button>
+      <button id="btn-settings" onclick="toggleSettings()">⚙ 설정</button>
+    </div>
+  </div>
+  <div id="settings-panel">
+    <div>
+      <div class="setting-label">기본 근무시간 (h/일)</div>
+      <input class="input-style" type="number" id="input-default-hours" value="8" min="1" max="24" onchange="onSettingChange()">
+    </div>
+    <div>
+      <div class="setting-label">시급 (원)</div>
+      <input class="input-style" type="text" inputmode="numeric" id="input-wage" value="15000"
+        onfocus="if(this.value==='0')this.value=''"
+        oninput="this.value=this.value.replace(/[^0-9]/g,'');onSettingChange()"
+        onblur="if(this.value==='')this.value='0';onSettingChange()">
+    </div>
+    <div>
+      <div class="setting-label">🏖 임시공휴일</div>
+      <div id="temp-section">
+        <button id="btn-temp-mode" onclick="toggleTempMode()">
+          <span id="temp-mode-text">지정 모드 OFF</span>
+          <span class="hint" id="temp-mode-hint">탭하여 활성화</span>
+        </button>
+        <div id="temp-list"></div>
+      </div>
+    </div>
+  </div>
+  <!-- 도움말 패널 -->
+  <div id="help-panel">
+    <div class="help-title">📖 사용 방법</div>
+    <div class="help-item">
+      <span class="help-icon">📅</span>
+      <div class="help-text">달력에서 <strong>날짜를 탭</strong>하면 근무시간 입력창이 열려요. 시간·분을 직접 입력하거나 빠른 버튼을 눌러 저장하세요.</div>
+    </div>
+    <div class="help-item">
+      <span class="help-icon">🌴</span>
+      <div class="help-text"><strong>연차</strong>는 각 날짜 우측 하단 버튼으로 추가/취소할 수 있어요. 연차 날은 필수시간에서 자동 차감돼요.</div>
+    </div>
+    <div class="help-item">
+      <span class="help-icon">🏖</span>
+      <div class="help-text"><strong>임시공휴일</strong>은 설정(⚙) → 임시공휴일 지정 모드 ON → 달력에서 원하는 날짜 탭 → 완료 후 모드 OFF 하면 돼요.</div>
+    </div>
+    <div class="help-item">
+      <span class="help-icon">⏱</span>
+      <div class="help-text"><strong>한도시간</strong>까지 10시간 이내로 남으면 경고가 뜨고, 초과 시점부터 달력에 차단휴가가 자동 표시돼요.</div>
+    </div>
+    <hr class="help-divider">
+    <div class="help-item">
+      <span class="help-icon">💾</span>
+      <div class="help-text"><strong>같은 기기·같은 브라우저</strong>에서 열면 데이터가 자동 저장돼요. 단, 다른 기기나 다른 브라우저로 이동하면 저장 데이터가 유지되지 않아요.</div>
+    </div>
+    <hr class="help-divider">
+    <div class="help-credit" style="margin-bottom:6px">📱 모바일 웹 버전 <strong>Coming Soon</strong></div>
+    <div class="help-credit">궁금한 사항은 <strong>김유진 프로</strong>에게 문의</div>
+  </div>
+
+  <div id="month-nav">
+    <button class="nav-btn" onclick="prevMonth()">‹</button>
+    <div>
+      <div id="month-title"></div>
+      <div id="month-subtitle"></div>
+    </div>
+    <button class="nav-btn" onclick="nextMonth()">›</button>
+  </div>
+</div>
+
+<!-- 콘텐츠 -->
+<div id="content">
+
+  <!-- 필수시간 카드 -->
+  <div id="progress-card">
+    <div class="progress-row">
+      <div>
+        <div class="pbar-label">실제 근무</div>
+        <div class="progress-val" id="actual-hours">0h</div>
+      </div>
+      <div>
+        <div class="pbar-label" style="text-align:right">필수 근무</div>
+        <div class="progress-val-req"><span id="req-hours">0</span>h</div>
+      </div>
+    </div>
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" id="progress-bar"></div>
+    </div>
+    <div class="progress-info">
+      <span id="progress-filled">0/0일 입력됨</span>
+      <span id="progress-pct">0.0% 달성</span>
+    </div>
+  </div>
+
+  <!-- 한도시간 카드 -->
+  <div id="limit-card">
+    <div class="limit-header">
+      <span class="limit-title">⏱ 한도시간</span>
+      <span class="limit-badge" id="limit-badge"></span>
+    </div>
+    <div class="limit-row">
+      <div class="limit-actual" id="limit-actual">0h</div>
+      <div class="limit-max">한도 <span id="limit-max-val">0</span>h</div>
+    </div>
+    <div id="limit-bar-bg"><div id="limit-bar"></div></div>
+    <div class="limit-info">
+      <span id="limit-pct">0.0%</span>
+      <span id="limit-remain"></span>
+    </div>
+    <div id="limit-warning-msg"></div>
+  </div>
+
+  <!-- 초과/미달 카드 -->
+  <div id="status-cards">
+    <div class="status-card" id="card-overtime">
+      <div class="status-card-label">필수 초과</div>
+      <div class="status-card-val" id="val-overtime">+0h</div>
+      <div class="status-card-sub" id="sub-overtime"></div>
+    </div>
+    <div class="status-card" id="card-undertime">
+      <div class="status-card-label">필수 미달</div>
+      <div class="status-card-val" id="val-undertime">-0h</div>
+      <div class="status-card-sub" id="sub-undertime">채워야 할 시간</div>
+    </div>
+  </div>
+
+  <!-- 초과수당 카드 -->
+  <div id="overtime-card">
+    <div class="ot-title">💰 초과근무수당 계산</div>
+    <div class="ot-row"><span class="ot-row-label">총 초과시간</span><span class="ot-row-val" id="ot-total"></span></div>
+    <div class="ot-row"><span class="ot-row-label">무급 구간 (0~14h)</span><span class="ot-row-val" id="ot-unpaid"></span></div>
+    <div class="ot-row"><span class="ot-row-label">수당 적용분 (14h 초과)</span><span class="ot-row-val highlight" id="ot-payable"></span></div>
+    <div class="ot-row"><span class="ot-row-label">시급</span><span class="ot-row-val" id="ot-wage"></span></div>
+    <div class="ot-row"><span class="ot-row-label">가산율</span><span class="ot-row-val">×1.5 (50% 가산)</span></div>
+    <div class="ot-divider"><span class="ot-total-label">총 수당</span><span class="ot-total-val" id="ot-pay"></span></div>
+  </div>
+</div>
+
+<!-- 캘린더 -->
+<div id="cal-wrap">
+  <div id="calendar">
+    <div id="cal-header">
+      <div class="cal-dow">일</div><div class="cal-dow">월</div><div class="cal-dow">화</div>
+      <div class="cal-dow">수</div><div class="cal-dow">목</div><div class="cal-dow">금</div>
+      <div class="cal-dow">토</div>
+    </div>
+    <div id="cal-grid"></div>
+  </div>
+  <div id="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#e8ff5a"></div>기본</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a8ff5a"></div>초과</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ff9a7a"></div>미달</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#8a6ab8"></div>연차</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#7a2020"></div>차단휴가</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#7a3a3a"></div>임시공휴일</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#3a3a48"></div>공휴일/주말</div>
+  </div>
+</div>
+
+<!-- 바텀시트 -->
+<div id="overlay" onclick="closeBottomSheet()">
+  <div id="bottomsheet" onclick="event.stopPropagation()">
+    <div class="bs-handle"></div>
+    <div id="bs-date"></div>
+    <div id="bs-input-row">
+      <div class="bs-field-wrap">
+        <input class="bs-time-input" id="bs-hour" type="number" min="0" max="23" placeholder="0"
+          oninput="updateQuickBtns()" onkeydown="if(event.key==='Enter')saveDay()">
+        <div class="bs-spin-wrap">
+          <button class="bs-spin-btn" onclick="spinField('bs-hour',1,0,23)">▲</button>
+          <button class="bs-spin-btn" onclick="spinField('bs-hour',-1,0,23)">▼</button>
+        </div>
+      </div>
+      <span class="bs-time-unit">시간</span>
+      <div class="bs-field-wrap">
+        <input class="bs-time-input" id="bs-min" type="number" min="0" max="59" placeholder="0"
+          oninput="updateQuickBtns()" onkeydown="if(event.key==='Enter')saveDay()">
+        <div class="bs-spin-wrap">
+          <button class="bs-spin-btn" onclick="spinField('bs-min',5,0,55)">▲</button>
+          <button class="bs-spin-btn" onclick="spinField('bs-min',-5,0,55)">▼</button>
+        </div>
+      </div>
+      <span class="bs-time-unit">분</span>
+    </div>
+    <div id="bs-quick">
+      <button class="bs-quick-btn" onclick="setQuick(6,0)">6h</button>
+      <button class="bs-quick-btn" onclick="setQuick(7,0)">7h</button>
+      <button class="bs-quick-btn" onclick="setQuick(8,0)">8h</button>
+      <button class="bs-quick-btn" onclick="setQuick(9,0)">9h</button>
+      <button class="bs-quick-btn" onclick="setQuick(7,30)">7h30</button>
+      <button class="bs-quick-btn" onclick="setQuick(8,30)">8h30</button>
+      <button class="bs-quick-btn" onclick="setQuick(10,0)">10h</button>
+      <button class="bs-quick-btn" onclick="setQuick('del')">🗑</button>
+    </div>
+    <button id="bs-save" onclick="saveDay()">저장</button>
+  </div>
+</div>
+
+<script>
+// ── 공휴일 데이터 ─────────────────────────────────────────
+const FIXED_HOLIDAYS = ["01-01","03-01","05-05","06-06","07-17","08-15","10-03","10-09","12-25"];
+const FIXED_NAMES = {
+  "01-01":"신정","03-01":"삼일절","05-05":"어린이날","06-06":"현충일",
+  "07-17":"제헌절","08-15":"광복절","10-03":"개천절","10-09":"한글날","12-25":"성탄절"
+};
+const LUNAR_HOLIDAYS = {
+  2025: {"01-28":"설날","01-29":"설날","01-30":"설날","05-06":"대체공휴일","05-25":"부처님오신날","10-05":"추석","10-06":"추석","10-07":"추석"},
+  2026: {"01-28":"설날","01-29":"설날","01-30":"설날","05-24":"부처님오신날","05-25":"대체공휴일","09-24":"추석","09-25":"추석","09-26":"추석"},
+  2027: {"02-06":"설날","02-07":"설날","02-08":"설날","02-09":"대체공휴일","05-13":"부처님오신날","08-16":"대체공휴일","09-14":"추석","09-15":"추석","09-16":"추석","10-04":"대체공휴일","10-11":"대체공휴일"},
+};
+
+function getHolidayName(dateStr) {
+  const md = dateStr.slice(5), year = parseInt(dateStr);
+  return FIXED_NAMES[md] || (LUNAR_HOLIDAYS[year] && LUNAR_HOLIDAYS[year][md]) || null;
+}
+function isHoliday(dateStr) {
+  const md = dateStr.slice(5), year = parseInt(dateStr);
+  return FIXED_HOLIDAYS.includes(md) || !!(LUNAR_HOLIDAYS[year] && LUNAR_HOLIDAYS[year][md]);
+}
+function isWeekend(dateStr) { const d = new Date(dateStr).getDay(); return d===0||d===6; }
+
+// ── 상태 ─────────────────────────────────────────────────
+const today = new Date();
+let curYear  = today.getFullYear();
+let curMonth = today.getMonth() + 1;
+let defaultHours = 8;
+let hourlyWage   = 15000;
+let dailyHours   = {};
+let annualLeaves = {};
+let tempHolidays = {};
+let blockedDays  = {};   // 차단휴가 날짜 {dateStr: true}
+let tempMode     = false;
+let activeDay    = null;
+const OVERTIME_THRESHOLD = 14;
+const LIMIT_WARN_MARGIN  = 10;   // 한도 -10h부터 차단휴가
+const MONTH_KR = ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"];
+const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+// ── localStorage ────────────────────────────────────────
+const STORAGE_KEY = 'worktracker_v1';
+
+function saveToStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      dailyHours, annualLeaves, tempHolidays, defaultHours, hourlyWage
+    }));
+  } catch(e) {}
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (data.dailyHours)   dailyHours   = data.dailyHours;
+    if (data.annualLeaves) annualLeaves = data.annualLeaves;
+    if (data.tempHolidays) tempHolidays = data.tempHolidays;
+    if (data.defaultHours) {
+      defaultHours = data.defaultHours;
+      document.getElementById('input-default-hours').value = defaultHours;
+    }
+    if (data.hourlyWage !== undefined) {
+      hourlyWage = data.hourlyWage;
+      document.getElementById('input-wage').value = hourlyWage;
+    }
+  } catch(e) {}
+}
+
+// ── 유틸 ────────────────────────────────────────────────
+function ds(y, m, d) { return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
+function isNonWork(dateStr) { return isWeekend(dateStr) || isHoliday(dateStr) || !!tempHolidays[dateStr]; }
+
+function getWorkdays() {
+  const days = [], total = daysInMonth(curYear, curMonth);
+  for (let d = 1; d <= total; d++) {
+    const s = ds(curYear, curMonth, d);
+    if (!isNonWork(s)) days.push(s);
+  }
+  return days;
+}
+
+function calcReqHours(totalWorkdays, reqDays) {
+  let base = totalWorkdays >= 23 ? 177 : totalWorkdays === 22 ? 171 : totalWorkdays * defaultHours;
+  return base - (totalWorkdays - reqDays) * defaultHours;
+}
+
+// 한도시간: 달력 일수별 고정값
+function calcLimitHours(year, month) {
+  const calDays = daysInMonth(year, month);
+  if (calDays === 31) return 230;
+  if (calDays === 30) return 222;
+  if (calDays === 29) return 215;  // 2월 윤년
+  return 208;                       // 2월 평년 (28일)
+}
+
+function fmtHours(h) {
+  const hours = Math.floor(h), mins = Math.round((h - hours) * 60);
+  return mins === 0 ? hours + 'h' : hours + 'h ' + String(mins).padStart(2,'0') + 'm';
+}
+
+// ── 차단휴가 계산 ────────────────────────────────────────
+// 한도 - 10h 지점에서 초과 시 그 날부터 남은 평일 자동 차단
+function calcBlockedDays(workdays, actualByDay, limitHours) {
+  const threshold = limitHours - LIMIT_WARN_MARGIN;
+  let cumulative = 0;
+  const blocked = {};
+  for (const d of workdays) {
+    if (annualLeaves[d] || blockedDays[d]) continue;
+    const hrs = dailyHours[d] !== undefined ? Number(dailyHours[d]) : defaultHours;
+    cumulative += hrs;
+    if (cumulative > threshold) {
+      // 이 날 이후 남은 날들 차단
+      const idx = workdays.indexOf(d);
+      // 이 날 추가 후 초과분 계산: 이 날은 일부만 가능할 수도 있지만 일단 날 단위로 처리
+      for (let i = idx; i < workdays.length; i++) {
+        if (!annualLeaves[workdays[i]]) blocked[workdays[i]] = true;
+      }
+      break;
+    }
+  }
+  return blocked;
+}
+
+// ── 설정 ────────────────────────────────────────────────
+function toggleHelp() {
+  const panel = document.getElementById('help-panel');
+  const btn   = document.getElementById('btn-help');
+  const isOpen = panel.classList.toggle('open');
+  btn.classList.toggle('active', isOpen);
+  if (isOpen) {
+    document.getElementById('settings-panel').classList.remove('open');
+    document.getElementById('btn-settings').classList.remove('active');
+  }
+}
+function toggleSettings() {
+  const panel = document.getElementById('settings-panel');
+  const btn   = document.getElementById('btn-settings');
+  const isOpen = panel.classList.toggle('open');
+  btn.classList.toggle('active', isOpen);
+  if (isOpen) {
+    document.getElementById('help-panel').classList.remove('open');
+    document.getElementById('btn-help').classList.remove('active');
+  }
+}
+function onSettingChange() {
+  defaultHours = parseInt(document.getElementById('input-default-hours').value) || 8;
+  hourlyWage   = parseInt(document.getElementById('input-wage').value) || 0;
+  render();
+}
+
+// ── 스핀 버튼 ──────────────────────────────────────────
+function spinField(id, delta, min, max) {
+  const el  = document.getElementById(id);
+  const cur = parseInt(el.value) || 0;
+  const next = Math.min(max, Math.max(min, cur + delta));
+  el.value  = next;
+  updateQuickBtns();
+}
+
+// ── 월 이동 ─────────────────────────────────────────────
+function prevMonth() {
+  if (curMonth===1){curYear--;curMonth=12;}else curMonth--;
+  tempMode=false; render();
+}
+function nextMonth() {
+  if (curMonth===12){curYear++;curMonth=1;}else curMonth++;
+  tempMode=false; render();
+}
+
+// ── 임시공휴일 ──────────────────────────────────────────
+function toggleTempMode() {
+  tempMode = !tempMode;
+  const btn = document.getElementById('btn-temp-mode');
+  btn.classList.toggle('active', tempMode);
+  document.getElementById('temp-mode-text').textContent = tempMode ? '지정 모드 ON' : '지정 모드 OFF';
+  document.getElementById('temp-mode-hint').textContent = tempMode ? '날짜 탭해서 지정/해제' : '탭하여 활성화';
+  document.getElementById('calendar').classList.toggle('temp-mode', tempMode);
+  renderGrid();
+}
+function renderTempList() {
+  const list = document.getElementById('temp-list');
+  const pfx  = `${curYear}-${String(curMonth).padStart(2,'0')}`;
+  const keys  = Object.keys(tempHolidays).filter(d=>d.startsWith(pfx)).sort();
+  if (!keys.length) { list.classList.remove('show'); list.innerHTML=''; return; }
+  list.classList.add('show');
+  list.innerHTML = keys.map(d =>
+    `<div class="temp-tag">${d.slice(5)}<button onclick="removeTH('${d}')">×</button></div>`
+  ).join('');
+}
+function removeTH(d) { delete tempHolidays[d]; render(); }
+
+// ── 날짜 클릭 ────────────────────────────────────────────
+function handleCellClick(day) {
+  const d = ds(curYear, curMonth, day);
+  if (tempMode) {
+    if (isWeekend(d) || isHoliday(d)) return;
+    if (tempHolidays[d]) delete tempHolidays[d];
+    else { tempHolidays[d]=true; delete dailyHours[d]; delete annualLeaves[d]; }
+    render(); return;
+  }
+  if (isNonWork(d) || annualLeaves[d] || blockedDays[d]) return;
+  openBottomSheet(d);
+}
+function toggleLeave(ev, d) {
+  ev.stopPropagation();
+  if (isNonWork(d)) return;
+  if (annualLeaves[d]) delete annualLeaves[d];
+  else { annualLeaves[d]=true; delete dailyHours[d]; }
+  render();
+}
+
+// ── 바텀시트 ────────────────────────────────────────────
+function openBottomSheet(dateStr) {
+  activeDay = dateStr;
+  document.getElementById('bs-date').textContent = dateStr.replace(/-/g,'. ') + ' 근무시간';
+  const saved = dailyHours[dateStr];
+  if (saved !== undefined) {
+    const h = Math.floor(saved), m = Math.round((saved-h)*60);
+    document.getElementById('bs-hour').value = h;
+    document.getElementById('bs-min').value  = m > 0 ? m : '';
+  } else {
+    document.getElementById('bs-hour').value = '';
+    document.getElementById('bs-min').value  = '';
+  }
+  updateQuickBtns();
+  document.getElementById('overlay').classList.add('show');
+  setTimeout(()=>document.getElementById('bs-hour').focus(), 100);
+}
+function closeBottomSheet() {
+  document.getElementById('overlay').classList.remove('show');
+  activeDay = null;
+}
+function saveDay() {
+  if (!activeDay) return;
+  const hv = document.getElementById('bs-hour').value;
+  const mv = document.getElementById('bs-min').value;
+  if (hv===''&&mv==='') delete dailyHours[activeDay];
+  else { const t=(parseInt(hv)||0)+(parseInt(mv)||0)/60; if(t>=0&&t<=24) dailyHours[activeDay]=t; }
+  closeBottomSheet(); render();
+}
+function setQuick(h,m) {
+  if (h==='del') { document.getElementById('bs-hour').value=''; document.getElementById('bs-min').value=''; }
+  else { document.getElementById('bs-hour').value=h; document.getElementById('bs-min').value=m>0?m:''; }
+  updateQuickBtns();
+}
+function updateQuickBtns() {
+  const h=document.getElementById('bs-hour').value, m=document.getElementById('bs-min').value||'0';
+  const defs=[[6,0],[7,0],[8,0],[9,0],[7,30],[8,30],[10,0],'del'];
+  document.querySelectorAll('.bs-quick-btn').forEach((btn,i)=>{
+    const q=defs[i];
+    if(q==='del') btn.classList.toggle('selected',h===''&&(m===''||m==='0'));
+    else btn.classList.toggle('selected',parseInt(h)===q[0]&&parseInt(m)===q[1]);
+  });
+}
+
+// ── 캘린더 렌더 ─────────────────────────────────────────
+function renderGrid(autoBlocked) {
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+  const firstDay = new Date(curYear, curMonth-1, 1).getDay();
+  const total    = daysInMonth(curYear, curMonth);
+
+  for (let i=0; i<firstDay; i++) {
+    const e=document.createElement('div'); e.className='cal-cell non-work'; grid.appendChild(e);
+  }
+
+  for (let day=1; day<=total; day++) {
+    const dateStr = ds(curYear, curMonth, day);
+    const weekend  = isWeekend(dateStr);
+    const holiday  = isHoliday(dateStr);
+    const isTH     = !!tempHolidays[dateStr];
+    const isLeave  = !!annualLeaves[dateStr];
+    const isBlocked= !!(autoBlocked && autoBlocked[dateStr]);
+    const hrs      = dailyHours[dateStr];
+    const isToday  = dateStr===todayStr;
+    const nonWork  = weekend||holiday||isTH;
+    const hnName   = getHolidayName(dateStr);
+
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell';
+    if (nonWork)   cell.classList.add('non-work');
+    if (isTH)      cell.classList.add('temp-holiday');
+    if (isLeave)   cell.classList.add('annual-leave');
+    if (isBlocked) cell.classList.add('blocked-leave');
+    if (tempMode && !weekend && !holiday && !isTH) cell.classList.add('temp-highlight');
+    cell.onclick = ()=>handleCellClick(day);
+
+    const dayDiv = document.createElement('div');
+    dayDiv.className = 'cell-day';
+    if (isToday) dayDiv.style.color='#e8ff5a';
+    dayDiv.innerHTML = day + (isToday ? '<span class="cell-day-dot"></span>' : '');
+    cell.appendChild(dayDiv);
+
+    if (holiday && !weekend && hnName) {
+      const hl=document.createElement('div'); hl.className='cell-holiday-label'; hl.textContent=hnName; cell.appendChild(hl);
+    }
+    if (isTH) {
+      const tl=document.createElement('div'); tl.className='cell-temp-label'; tl.textContent='임시공휴일'; cell.appendChild(tl);
+    }
+    if (isLeave) {
+      const ll=document.createElement('div'); ll.className='cell-leave-label'; ll.textContent='연차'; cell.appendChild(ll);
+    }
+    if (isBlocked) {
+      const bl=document.createElement('div'); bl.className='cell-blocked-label'; bl.textContent='차단휴가'; cell.appendChild(bl);
+    }
+
+    if (!nonWork && !isLeave && !isBlocked) {
+      const hDiv=document.createElement('div'); hDiv.className='cell-hours';
+      if (hrs!==undefined) {
+        if(hrs>defaultHours) hDiv.classList.add('over');
+        else if(hrs<defaultHours) hDiv.classList.add('under');
+        hDiv.textContent=fmtHours(hrs);
+      } else { hDiv.textContent=fmtHours(defaultHours); hDiv.style.opacity='0.3'; }
+      cell.appendChild(hDiv);
+    }
+
+    if (!nonWork && !tempMode && !isBlocked) {
+      const btn=document.createElement('button');
+      btn.className='cell-leave-btn'+(isLeave?' on':'');
+      btn.textContent=isLeave?'취소':'연차';
+      btn.onclick=e=>toggleLeave(e,dateStr);
+      cell.appendChild(btn);
+    }
+
+    grid.appendChild(cell);
+  }
+}
+
+// ── 전체 렌더 ────────────────────────────────────────────
+function render() {
+  document.getElementById('month-title').textContent = `${curYear}년 ${MONTH_KR[curMonth-1]}`;
+
+  const workdays     = getWorkdays();
+  const reqWorkdays  = workdays.filter(d=>!annualLeaves[d]&&!blockedDays[d]);
+  const reqHours     = calcReqHours(workdays.length, reqWorkdays.length);
+  const limitHours   = calcLimitHours(curYear, curMonth);
+
+  // 실제 근무시간 (연차·차단 제외)
+  const actualHours = reqWorkdays.reduce((s,d)=>s+(dailyHours[d]!==undefined?Number(dailyHours[d]):defaultHours),0);
+  const filledDays  = reqWorkdays.filter(d=>dailyHours[d]!==undefined).length;
+
+  // 차단휴가 자동 계산 (한도 -10h 초과 시점 이후 날들)
+  const autoBlocked = calcBlockedDays(workdays, dailyHours, limitHours);
+
+  // 헤더 서브타이틀
+  document.getElementById('month-subtitle').textContent = `근무일 ${reqWorkdays.length}일 · 필수 ${reqHours}h · 한도 ${limitHours}h`;
+
+  // 필수시간 카드
+  document.getElementById('actual-hours').textContent = fmtHours(actualHours);
+  document.getElementById('req-hours').textContent    = reqHours;
+  const pct = reqHours>0 ? Math.min(actualHours/reqHours*100,100) : 0;
+  const bar = document.getElementById('progress-bar');
+  bar.style.width = pct+'%';
+  bar.style.background = pct>=100 ? 'linear-gradient(90deg,#e8ff5a,#b8ff3a)' : 'linear-gradient(90deg,#4a4aff,#e8ff5a)';
+  document.getElementById('progress-filled').textContent = `${filledDays}/${reqWorkdays.length}일 입력됨`;
+  document.getElementById('progress-pct').textContent    = `${pct.toFixed(1)}% 달성`;
+
+  // 한도시간 카드
+  const limitPct     = limitHours>0 ? Math.min(actualHours/limitHours*100,100) : 0;
+  const limitRemain  = limitHours - actualHours;
+  const warnRemain   = limitRemain;
+  document.getElementById('limit-actual').textContent  = fmtHours(actualHours);
+  document.getElementById('limit-max-val').textContent = limitHours;
+  document.getElementById('limit-pct').textContent     = limitPct.toFixed(1)+'%';
+
+  const limitBar = document.getElementById('limit-bar');
+  limitBar.style.width = limitPct+'%';
+
+  const limitCard    = document.getElementById('limit-card');
+  const limitBadge   = document.getElementById('limit-badge');
+  const limitMsg     = document.getElementById('limit-warning-msg');
+  const blockedKeys  = Object.keys(autoBlocked);
+
+  if (blockedKeys.length > 0) {
+    // 차단휴가 발동
+    const firstBlock = blockedKeys.sort()[0];
+    limitCard.classList.remove('warning'); limitCard.classList.add('blocked');
+    limitBadge.className='limit-badge blocked'; limitBadge.textContent='차단휴가 발동';
+    limitBar.style.background='linear-gradient(90deg,#cc2020,#ff5050)';
+    document.getElementById('limit-remain').textContent = `잔여 ${fmtHours(Math.max(0,limitRemain))}`;
+    limitMsg.className='limit-warning-msg blocked';
+    limitMsg.textContent = `🚫 ${firstBlock.slice(5)}부터 차단휴가 자동 적용 (한도 ${LIMIT_WARN_MARGIN}h 이내 도달)`;
+  } else if (warnRemain <= LIMIT_WARN_MARGIN * 2 && actualHours > 0) {
+    // 경고 구간
+    limitCard.classList.remove('blocked'); limitCard.classList.add('warning');
+    limitBadge.className='limit-badge warning'; limitBadge.textContent='⚠ 한도 임박';
+    limitBar.style.background='linear-gradient(90deg,#cc6620,#f0a050)';
+    document.getElementById('limit-remain').textContent = `잔여 ${fmtHours(Math.max(0,limitRemain))}`;
+    limitMsg.className='limit-warning-msg warning';
+    limitMsg.textContent = `⚠ 한도까지 ${fmtHours(Math.max(0,limitRemain))} 남음. ${LIMIT_WARN_MARGIN}h 이내 도달 시 차단휴가 발동.`;
+  } else {
+    limitCard.classList.remove('warning','blocked');
+    limitBadge.className='limit-badge'; limitBadge.textContent='';
+    limitBar.style.background='linear-gradient(90deg,#4a4aff,#f0a050)';
+    document.getElementById('limit-remain').textContent = `잔여 ${fmtHours(Math.max(0,limitRemain))}`;
+    limitMsg.className='limit-warning-msg'; limitMsg.textContent='';
+  }
+
+  // 초과/미달
+  const diff       = actualHours - reqHours;
+  const overtimeH  = diff>0?diff:0;
+  const undertimeH = diff<0?Math.abs(diff):0;
+  const payableOT  = Math.max(0, overtimeH-OVERTIME_THRESHOLD);
+  const overtimePay= payableOT*hourlyWage*1.5;
+
+  const cardOT=document.getElementById('card-overtime'), cardUT=document.getElementById('card-undertime');
+  document.getElementById('val-overtime').textContent  = '+'+fmtHours(overtimeH);
+  document.getElementById('val-undertime').textContent = '-'+fmtHours(undertimeH);
+  if(overtimeH>0){cardOT.classList.add('overtime');document.getElementById('sub-overtime').textContent=`수당 ${overtimePay.toLocaleString()}원`;}
+  else cardOT.classList.remove('overtime');
+  if(undertimeH>0) cardUT.classList.add('undertime'); else cardUT.classList.remove('undertime');
+
+  const otCard=document.getElementById('overtime-card');
+  if(overtimeH>0){
+    otCard.classList.add('show');
+    document.getElementById('ot-total').textContent   = fmtHours(overtimeH);
+    document.getElementById('ot-unpaid').textContent  = fmtHours(Math.min(overtimeH,OVERTIME_THRESHOLD));
+    document.getElementById('ot-payable').textContent = fmtHours(payableOT);
+    document.getElementById('ot-wage').textContent    = `${hourlyWage.toLocaleString()}원`;
+    document.getElementById('ot-pay').textContent     = `${overtimePay.toLocaleString()}원`;
+  } else otCard.classList.remove('show');
+
+  renderTempList();
+  renderGrid(autoBlocked);
+  saveToStorage();
+}
+
+loadFromStorage();
+render();
+</script>
+</body>
+</html>
