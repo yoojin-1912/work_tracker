@@ -356,7 +356,17 @@
     <div id="bs-input-row">
       <div class="bs-field-wrap">
         <input class="bs-time-input" id="bs-hour" type="number" min="0" max="23" placeholder="0"
-          oninput="updateQuickBtns()" onkeydown="if(event.key==='Enter')saveDay()">
+          oninput="updateQuickBtns();
+                   if(this.value.length>=2){
+                     document.getElementById('bs-min').focus();
+                     document.getElementById('bs-min').select();
+                   }"
+          onkeydown="if(event.key==='Enter')saveDay();
+                     else if(event.key==='Tab'){
+                       event.preventDefault();
+                       document.getElementById('bs-min').focus();
+                       document.getElementById('bs-min').select();
+                     }">
         <div class="bs-spin-wrap">
           <button class="bs-spin-btn" onclick="spinField('bs-hour',1,0,23)">▲</button>
           <button class="bs-spin-btn" onclick="spinField('bs-hour',-1,0,23)">▼</button>
